@@ -10,21 +10,21 @@ export class InMemorySoundAssetStore extends InMemoryAssetStore {
 
   /**
    * Creates a new Sound asset.
-   * @param sound The Sound asset to create.
+   * @param asset The Sound asset to create.
    * @returns A Promise that resolves to the created Sound asset.
    */
-  createSound = async (sound: Asset): Promise<Asset> => {
-    if (sound.type !== "sound") {
+  createSound = async (asset: Asset): Promise<Asset> => {
+    if (asset.type !== "sound") {
       throw new Error("Asset type must be 'sound' for createSound.");
     }
     try {
       // Validate the sound-specific data
-      if (sound.sound) {
-        SoundSchema.parse(sound.sound);
+      if (asset.sound) {
+        SoundSchema.parse(asset.sound);
       } else {
         throw new Error("Sound data is missing.");
       }
-      return this.createAsset(sound);
+      return this.createAsset(asset);
     } catch (error: any) {
       throw new Error(`Error creating sound asset: ${error.message}`);
     }
@@ -56,21 +56,21 @@ export class InMemorySoundAssetStore extends InMemoryAssetStore {
   /**
    * Updates an existing Sound asset.
    * @param id The ID of the Sound asset to update.
-   * @param sound The updated Sound asset data.
+   * @param asset The updated Sound asset data.
    * @returns A Promise that resolves to the updated Sound asset.
    */
-  updateSound = async (id: string, sound: Asset): Promise<Asset> => {
-    if (sound.type !== "sound") {
+  updateSound = async (id: string, asset: Asset): Promise<Asset> => {
+    if (asset.type !== "sound") {
       throw new Error("Asset type must be 'sound' for updateSound.");
     }
     try {
       // Validate the sound-specific data
-      if (sound.sound) {
-        SoundSchema.parse(sound.sound);
+      if (asset.sound) {
+        SoundSchema.parse(asset.sound);
       } else {
         throw new Error("Sound data is missing.");
       }
-      return this.updateAsset(id, sound);
+      return this.updateAsset(id, asset);
     } catch (error: any) {
       throw new Error(`Error updating sound asset: ${error.message}`);
     }

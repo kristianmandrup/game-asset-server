@@ -10,21 +10,21 @@ export class InMemoryTileSetAssetStore extends InMemoryAssetStore {
 
   /**
    * Creates a new TileSet asset.
-   * @param tileset The TileSet asset to create.
+   * @param asset The TileSet asset to create.
    * @returns A Promise that resolves to the created TileSet asset.
    */
-  createTileSet = async (tileset: Asset): Promise<Asset> => {
-    if (tileset.type !== "tileset") {
+  createTileSet = async (asset: Asset): Promise<Asset> => {
+    if (asset.type !== "tileset") {
       throw new Error("Asset type must be 'tileset' for createTileSet.");
     }
     try {
       // Validate the tileset-specific data
-      if (tileset.tileset) {
-        TileSetSchema.parse(tileset.tileset);
+      if (asset.tileset) {
+        TileSetSchema.parse(asset.tileset);
       } else {
         throw new Error("TileSet data is missing.");
       }
-      return this.createAsset(tileset);
+      return this.createAsset(asset);
     } catch (error: any) {
       throw new Error(`Error creating tileset asset: ${error.message}`);
     }
@@ -56,21 +56,21 @@ export class InMemoryTileSetAssetStore extends InMemoryAssetStore {
   /**
    * Updates an existing TileSet asset.
    * @param id The ID of the TileSet asset to update.
-   * @param tileset The updated TileSet asset data.
+   * @param asset The updated TileSet asset data.
    * @returns A Promise that resolves to the updated TileSet asset.
    */
-  updateTileSet = async (id: string, tileset: Asset): Promise<Asset> => {
-    if (tileset.type !== "tileset") {
+  updateTileSet = async (id: string, asset: Asset): Promise<Asset> => {
+    if (asset.type !== "tileset") {
       throw new Error("Asset type must be 'tileset' for updateTileSet.");
     }
     try {
       // Validate the tileset-specific data
-      if (tileset.tileset) {
-        TileSetSchema.parse(tileset.tileset);
+      if (asset.tileset) {
+        TileSetSchema.parse(asset.tileset);
       } else {
         throw new Error("TileSet data is missing.");
       }
-      return this.updateAsset(id, tileset);
+      return this.updateAsset(id, asset);
     } catch (error: any) {
       throw new Error(`Error updating tileset asset: ${error.message}`);
     }

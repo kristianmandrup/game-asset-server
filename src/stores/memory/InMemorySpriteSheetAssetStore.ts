@@ -10,23 +10,23 @@ export class InMemorySpriteSheetAssetStore extends InMemoryAssetStore {
 
   /**
    * Creates a new SpriteSheet asset.
-   * @param spritesheet The SpriteSheet asset to create.
+   * @param asset The SpriteSheet asset to create.
    * @returns A Promise that resolves to the created SpriteSheet asset.
    */
-  createSpriteSheet = async (spritesheet: Asset): Promise<Asset> => {
-    if (spritesheet.type !== "spritesheet") {
+  createSpriteSheet = async (asset: Asset): Promise<Asset> => {
+    if (asset.type !== "spritesheet") {
       throw new Error(
         "Asset type must be 'spritesheet' for createSpriteSheet."
       );
     }
     try {
       // Validate the spritesheet-specific data
-      if (spritesheet.spritesheet) {
-        SpriteSheetSchema.parse(spritesheet.spritesheet);
+      if (asset.spritesheet) {
+        SpriteSheetSchema.parse(asset.spritesheet);
       } else {
         throw new Error("SpriteSheet data is missing.");
       }
-      return this.createAsset(spritesheet);
+      return this.createAsset(asset);
     } catch (error: any) {
       throw new Error(`Error creating spritesheet asset: ${error.message}`);
     }
@@ -58,26 +58,23 @@ export class InMemorySpriteSheetAssetStore extends InMemoryAssetStore {
   /**
    * Updates an existing SpriteSheet asset.
    * @param id The ID of the SpriteSheet asset to update.
-   * @param spritesheet The updated SpriteSheet asset data.
+   * @param asset The updated SpriteSheet asset data.
    * @returns A Promise that resolves to the updated SpriteSheet asset.
    */
-  updateSpriteSheet = async (
-    id: string,
-    spritesheet: Asset
-  ): Promise<Asset> => {
-    if (spritesheet.type !== "spritesheet") {
+  updateSpriteSheet = async (id: string, asset: Asset): Promise<Asset> => {
+    if (asset.type !== "spritesheet") {
       throw new Error(
         "Asset type must be 'spritesheet' for updateSpriteSheet."
       );
     }
     try {
       // Validate the spritesheet-specific data
-      if (spritesheet.spritesheet) {
-        SpriteSheetSchema.parse(spritesheet.spritesheet);
+      if (asset.spritesheet) {
+        SpriteSheetSchema.parse(asset.spritesheet);
       } else {
         throw new Error("SpriteSheet data is missing.");
       }
-      return this.updateAsset(id, spritesheet);
+      return this.updateAsset(id, asset);
     } catch (error: any) {
       throw new Error(`Error updating spritesheet asset: ${error.message}`);
     }

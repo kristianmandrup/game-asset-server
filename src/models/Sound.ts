@@ -2,7 +2,6 @@ import { z } from "zod";
 
 export const SoundSchema = z.object({
   name: z.string(),
-  file: z.string(),
   volume: z.number().optional(),
   duration: z.number().optional(),
 });
