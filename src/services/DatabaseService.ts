@@ -1,13 +1,13 @@
-import { InMemoryDataStore } from "../stores/memory/InMemoryDataStore";
 import { DataStore } from "../stores/DataStore";
 import { Project, ProjectSchema } from "../models/Project";
 import { Asset } from "../models/Asset";
+import { DatabaseDataStore } from "../stores/sqldb/DatabaseDataStore";
 
 export class DatabaseService {
   private dataStore: DataStore;
 
   constructor() {
-    this.dataStore = new InMemoryDataStore();
+    this.dataStore = new DatabaseDataStore();
   }
 
   createProject = async (project: Project): Promise<Project> => {
