@@ -8,50 +8,64 @@ import { DatabaseProjectStore } from "./DatabaseProjectStore";
 import { DatabaseSoundAssetStore } from "./DatabaseSoundAssetStore";
 import { DatabaseUserStore } from "./DatabaseUserStore"; // Import DatabaseUserStore
 import { DatabaseApiKeyStore } from "./DatabaseApiKeyStore"; // Import DatabaseApiKeyStore
-import * as sqlite3 from "sqlite3";
-import * as path from "path";
 import { DatabaseTileSetAssetStore } from "./DatabaseTileSetAssetStore";
 import { DatabaseSpriteSheetAssetStore } from "./DatabaseSpriteSheetAssetStore";
+import { Client } from "pg";
+import SqliteDatabase from "better-sqlite3";
+import {
+  NodePgDatabase,
+  drizzle as drizzlePg,
+} from "drizzle-orm/node-postgres";
+import {
+  BetterSQLite3Database,
+  drizzle as drizzleSqlite,
+} from "drizzle-orm/better-sqlite3";
+import * as schema from "../../db/schema";
+
+export type DrizzleDb =
+  | NodePgDatabase<typeof schema>
+  | BetterSQLite3Database<typeof schema>;
 
 export class DatabaseDataStore implements DataStore {
   projects: ProjectStore;
   spritesheets: DatabaseSpriteSheetAssetStore;
   tilesets: DatabaseTileSetAssetStore;
   sounds: DatabaseSoundAssetStore;
-  users: UserStore; // Add users store
-  apiKeys: ApiKeyStore; // Add apiKeys store
-  private db: sqlite3.Database;
+  users: UserStore;
+  apiKeys: ApiKeyStore;
+  private db: DrizzleDb;
+  private pgClient?: Client;
+  private sqliteClient?: InstanceType<typeof SqliteDatabase>;
 
-  constructor(
-    dbPath: string = path.join(__dirname, "../data/game_asset_server.db")
-  ) {
-    this.db = new sqlite3.Database(dbPath, (err) => {
-      if (err) {
-        console.error("Error opening database:", err.message);
-      } else {
-        console.log("Connected to the SQLite database.");
-      }
-    });
+  constructor() {
+    if (process.env.DB_DIALECT === "sqlite") {
+      this.sqliteClient = new SqliteDatabase("./sqlite.db");
+      this.db = drizzleSqlite(this.sqliteClient, { schema });
+      console.log("Connected to SQLite database.");
+    } else {
+      this.pgClient = new Client({
+        connectionString: process.env.DATABASE_URL!,
+      });
+      this.pgClient.connect();
+      this.db = drizzlePg(this.pgClient, { schema });
+      console.log("Connected to PostgreSQL database.");
+    }
 
     this.projects = new DatabaseProjectStore(this.db, this);
     this.spritesheets = new DatabaseSpriteSheetAssetStore(this.db, this);
     this.tilesets = new DatabaseTileSetAssetStore(this.db, this);
     this.sounds = new DatabaseSoundAssetStore(this.db, this);
-    this.users = new DatabaseUserStore(this.db, this); // Instantiate DatabaseUserStore
-    this.apiKeys = new DatabaseApiKeyStore(this.db, this); // Instantiate DatabaseApiKeyStore
+    this.users = new DatabaseUserStore(this.db, this);
+    this.apiKeys = new DatabaseApiKeyStore(this.db, this);
   }
 
-  close(): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.db.close((err) => {
-        if (err) {
-          console.error("Error closing database:", err.message);
-          reject(err);
-        } else {
-          console.log("Closed the SQLite database connection.");
-          resolve();
-        }
-      });
-    });
+  async close(): Promise<void> {
+    if (this.pgClient) {
+      await this.pgClient.end();
+      console.log("Closed PostgreSQL database connection.");
+    } else if (this.sqliteClient) {
+      this.sqliteClient.close();
+      console.log("Closed SQLite database connection.");
+    }
   }
 }

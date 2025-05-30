@@ -1,208 +1,116 @@
 import { ApiKey, ApiKeySchema } from "../../models/ApiKey";
 import { ApiKeyStore, DataStore } from "../DataStore";
-import * as sqlite3 from "sqlite3";
 import { v4 as uuidv4 } from "uuid";
 import * as bcrypt from "bcrypt";
+import { DrizzleDb } from "./DatabaseDataStore"; // Import DrizzleDb type
+import * as schema from "../../db/schema";
+import { eq, and } from "drizzle-orm";
 
 export class DatabaseApiKeyStore implements ApiKeyStore {
-  private db: sqlite3.Database;
+  private db: DrizzleDb;
   private dataStore: DataStore;
   private readonly saltRounds = 10; // For bcrypt hashing
 
-  constructor(db: sqlite3.Database, dataStore: DataStore) {
+  constructor(db: DrizzleDb, dataStore: DataStore) {
     this.db = db;
     this.dataStore = dataStore;
-    this.initSchema();
-  }
-
-  private initSchema(): void {
-    this.db.run(`
-      CREATE TABLE IF NOT EXISTS api_keys (
-        id TEXT PRIMARY KEY,
-        key_hash TEXT NOT NULL UNIQUE,
-        user_id TEXT NOT NULL,
-        name TEXT,
-        permissions TEXT, -- Stored as JSON string
-        rate_limit_tier TEXT,
-        created_at TEXT NOT NULL,
-        expires_at TEXT,
-        last_used_at TEXT,
-        is_active INTEGER NOT NULL, -- SQLite stores booleans as INTEGER (0 or 1)
-        FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE CASCADE
-      )
-    `);
   }
 
   async createApiKey(apiKey: ApiKey): Promise<ApiKey> {
-    apiKey.id = uuidv4();
-    apiKey.created_at = new Date().toISOString();
-    apiKey.is_active = true; // Default to active
-
-    // Hash the API key before storing
     const hashedKey = await bcrypt.hash(apiKey.key_hash, this.saltRounds);
-    apiKey.key_hash = hashedKey;
+    const newApiKey = {
+      ...apiKey,
+      id: uuidv4(),
+      key_hash: hashedKey,
+      created_at: new Date(),
+      updated_at: new Date(),
+      is_active: true, // Default to active
+      // Ensure permissions is stored as JSONB
+      permissions: apiKey.permissions || null,
+      expires_at: apiKey.expires_at || null,
+      last_used_at: apiKey.last_used_at || null,
+    };
 
-    return new Promise((resolve, reject) => {
-      this.db.run(
-        `INSERT INTO api_keys (id, key_hash, user_id, name, permissions, rate_limit_tier, created_at, expires_at, last_used_at, is_active) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-        [
-          apiKey.id,
-          apiKey.key_hash,
-          apiKey.user_id,
-          apiKey.name,
-          JSON.stringify(apiKey.permissions), // Store array as JSON string
-          apiKey.rate_limit_tier,
-          apiKey.created_at,
-          apiKey.expires_at,
-          apiKey.last_used_at,
-          apiKey.is_active ? 1 : 0, // Convert boolean to integer
-        ],
-        function (err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(apiKey);
-          }
-        }
-      );
-    });
+    const result = await (this.db as any)
+      .insert(schema.apiKeys)
+      .values(newApiKey)
+      .returning();
+    return result[0];
   }
 
-  private parseApiKeyRow(row: any): ApiKey {
-    if (row.permissions) {
-      row.permissions = JSON.parse(row.permissions as string);
-    }
-    row.is_active = (row.is_active as number) === 1;
-    return row as ApiKey;
-  }
-
-  async getApiKey(keyHash: string): Promise<ApiKey | undefined> {
-    return new Promise((resolve, reject) => {
-      this.db.get(
-        `SELECT * FROM api_keys WHERE key_hash = ?`,
-        [keyHash],
-        (err, row: any) => {
-          if (err) {
-            reject(err);
-          } else if (row) {
-            resolve(this.parseApiKeyRow(row));
-          } else {
-            resolve(undefined);
-          }
-        }
-      );
+  async getApiKey(key_hash: string): Promise<ApiKey | undefined> {
+    // When retrieving, we need to compare the provided key_hash with the stored hashed key
+    // This typically means iterating through all keys and comparing, or storing a searchable prefix
+    // For simplicity and security, Drizzle doesn't directly support bcrypt comparison in queries.
+    // A common pattern is to retrieve by user_id and then compare, or if keyHash is unique, retrieve by keyHash.
+    // Since keyHash is unique, we'll retrieve by it and then compare.
+    // NOTE: This is not how API key validation usually works. You'd hash the incoming key and compare to stored hash.
+    // The `getApiKey` method here seems to imply getting by the *hashed* key, which is unusual for an external API.
+    // Assuming `keyHash` here means the *stored hashed key* for lookup.
+    const apiKey = await (this.db as any).query.apiKeys.findFirst({
+      where: eq(schema.apiKeys.keyHash, key_hash),
     });
+    return apiKey;
   }
 
   async getApiKeyById(id: string): Promise<ApiKey | undefined> {
-    return new Promise((resolve, reject) => {
-      this.db.get(
-        `SELECT * FROM api_keys WHERE id = ?`,
-        [id],
-        (err, row: any) => {
-          if (err) {
-            reject(err);
-          } else if (row) {
-            resolve(this.parseApiKeyRow(row));
-          } else {
-            resolve(undefined);
-          }
-        }
-      );
+    const apiKey = await (this.db as any).query.apiKeys.findFirst({
+      where: eq(schema.apiKeys.id, id),
     });
+    return apiKey;
   }
 
   async getApiKeysByUserId(userId: string): Promise<ApiKey[]> {
-    return new Promise((resolve, reject) => {
-      this.db.all(
-        `SELECT * FROM api_keys WHERE user_id = ?`,
-        [userId],
-        (err, rows: any[]) => {
-          if (err) {
-            reject(err);
-          } else {
-            const apiKeys = rows.map((row) => this.parseApiKeyRow(row));
-            resolve(apiKeys);
-          }
-        }
-      );
+    const apiKeys = await (this.db as any).query.apiKeys.findMany({
+      where: eq(schema.apiKeys.userId, userId),
     });
+    return apiKeys;
   }
 
   async updateApiKey(id: string, apiKey: Partial<ApiKey>): Promise<ApiKey> {
-    apiKey.expires_at = apiKey.expires_at || null; // Ensure null for no expiry
-    apiKey.last_used_at = apiKey.last_used_at || null; // Ensure null for no last used
+    const updatedApiKey = {
+      ...apiKey,
+      updated_at: new Date(),
+      // Ensure permissions is stored as JSONB
+      permissions:
+        apiKey.permissions === undefined
+          ? undefined
+          : apiKey.permissions || null,
+      expires_at:
+        apiKey.expires_at === undefined ? undefined : apiKey.expires_at || null,
+      last_used_at:
+        apiKey.last_used_at === undefined
+          ? undefined
+          : apiKey.last_used_at || null,
+      is_active: apiKey.is_active === undefined ? undefined : apiKey.is_active,
+    };
 
-    const fields: string[] = [];
-    const values: any[] = [];
-
-    for (const key in apiKey) {
-      if (apiKey.hasOwnProperty(key) && key !== "id") {
-        let value = (apiKey as any)[key];
-        if (key === "permissions") {
-          value = JSON.stringify(value);
-        } else if (key === "is_active") {
-          value = value ? 1 : 0;
-        }
-        fields.push(`${key} = ?`);
-        values.push(value);
-      }
-    }
-
-    if (fields.length === 0) {
-      return this.getApiKeyById(id) // Use getApiKeyById
-        .then((foundKey) => {
-          if (!foundKey) {
-            throw new Error(`API Key with id ${id} not found.`);
-          }
-          return foundKey;
-        })
-        .catch((err) => {
-          throw err;
-        });
-    }
-
-    const _dataStore = this.dataStore; // Capture this.dataStore
-
-    return new Promise((resolve, reject) => {
-      this.db.run(
-        `UPDATE api_keys SET ${fields.join(", ")} WHERE id = ?`,
-        [...values, id],
-        function (err) {
-          if (err) {
-            reject(err);
-          } else if (this.changes === 0) {
-            reject(new Error(`API Key with id ${id} not found.`));
-          } else {
-            _dataStore.apiKeys
-              .getApiKeyById(id) // Use getApiKeyById
-              .then((updatedKey) => {
-                if (updatedKey) {
-                  resolve(updatedKey);
-                } else {
-                  reject(
-                    new Error(`API Key with id ${id} not found after update.`)
-                  );
-                }
-              })
-              .catch(reject);
-          }
-        }
+    // If key_hash is being updated, hash it
+    if (updatedApiKey.key_hash) {
+      updatedApiKey.key_hash = await bcrypt.hash(
+        updatedApiKey.key_hash,
+        this.saltRounds
       );
-    });
+    }
+
+    const result = await (this.db as any)
+      .update(schema.apiKeys)
+      .set(updatedApiKey)
+      .where(eq(schema.apiKeys.id, id))
+      .returning();
+    if (result.length === 0) {
+      throw new Error(`API Key with id ${id} not found.`);
+    }
+    return result[0];
   }
 
   async deleteApiKey(id: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.db.run(`DELETE FROM api_keys WHERE id = ?`, [id], function (err) {
-        if (err) {
-          reject(err);
-        } else if (this.changes === 0) {
-          reject(new Error(`API Key with id ${id} not found.`));
-        } else {
-          resolve();
-        }
-      });
-    });
+    const result = await (this.db as any)
+      .delete(schema.apiKeys)
+      .where(eq(schema.apiKeys.id, id))
+      .returning();
+    if (result.length === 0) {
+      throw new Error(`API Key with id ${id} not found.`);
+    }
   }
 }

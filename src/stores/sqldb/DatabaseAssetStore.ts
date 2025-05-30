@@ -1,133 +1,102 @@
 import { Asset } from "../../models/Asset";
 import { AssetStore, DataStore } from "../DataStore";
-import * as sqlite3 from "sqlite3";
 import { v4 as uuidv4 } from "uuid";
+import { DrizzleDb } from "./DatabaseDataStore"; // Import DrizzleDb type
+import { NodePgDatabase } from "drizzle-orm/node-postgres";
+import { BetterSQLite3Database } from "drizzle-orm/better-sqlite3";
+import * as schema from "../../db/schema";
+import { eq, and, sql } from "drizzle-orm";
 
-export abstract class DatabaseAssetStore<T extends Asset>
-  implements AssetStore<T>
-{
-  private dataStore: DataStore;
-  protected db: sqlite3.Database;
-  protected tableName: string;
+export class DatabaseAssetStore<T extends Asset> implements AssetStore<T> {
+  protected db: DrizzleDb;
+  protected dataStore: DataStore;
+  protected tableName: string; // Keep tableName for consistency, though not directly used in Drizzle queries
 
-  constructor(db: sqlite3.Database, dataStore: DataStore, tableName: string) {
+  constructor(db: DrizzleDb, dataStore: DataStore, tableName: string) {
     this.db = db;
     this.dataStore = dataStore;
     this.tableName = tableName;
-    this.createTable(); // Call createTable in the constructor
   }
 
-  protected abstract createTable(): Promise<void>;
-  protected abstract serialize(asset: T): any[];
-  protected abstract deserialize(row: any): T;
-  protected abstract getColumns(): string;
-  protected abstract getPlaceholders(): string;
-  protected abstract getUpdateSet(): string;
-  protected abstract serializeUpdate(asset: T): any[];
-
   async createAsset(asset: T): Promise<T> {
-    asset.id = uuidv4();
-    return new Promise((resolve, reject) => {
-      this.db.run(
-        `INSERT INTO ${
-          this.tableName
-        } (${this.getColumns()}) VALUES (${this.getPlaceholders()})`,
-        this.serialize(asset),
-        function (err) {
-          if (err) {
-            reject(err);
-          } else {
-            resolve(asset);
-          }
-        }
-      );
-    });
+    const newAsset = {
+      ...asset,
+      id: uuidv4(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+      // Handle asset-specific details for JSONB columns
+      soundDetails: asset.type === "sound" ? (asset as any).soundDetails : null,
+      spriteSheetDetails:
+        asset.type === "spritesheet" ? (asset as any).spriteSheetDetails : null,
+      tileSetDetails:
+        asset.type === "tileset" ? (asset as any).tileSetDetails : null,
+    };
+
+    const result = await (this.db as any)
+      .insert(schema.assets)
+      .values(newAsset)
+      .returning();
+    return result[0] as T;
   }
 
   async getAssets(query?: Partial<T>): Promise<T[]> {
-    return new Promise((resolve, reject) => {
-      let sql = `SELECT ${this.getColumns()} FROM ${this.tableName}`;
-      const params: any[] = [];
-      if (query && query.project_id) {
-        sql += ` WHERE project_id = ?`;
-        params.push(query.project_id);
-      }
-      // Add more query parameters as needed based on common asset properties
-      if (query && query.type) {
-        sql += `${params.length > 0 ? " AND" : " WHERE"} type = ?`;
-        params.push(query.type);
-      }
-      if (query && query.tag) {
-        sql += `${params.length > 0 ? " AND" : " WHERE"} tag = ?`;
-        params.push(query.tag);
-      }
-      if (query && query.name) {
-        sql += `${params.length > 0 ? " AND" : " WHERE"} name = ?`;
-        params.push(query.name);
-      }
+    const conditions = [];
+    if (query?.projectId) {
+      conditions.push(eq(schema.assets.projectId, query.projectId));
+    }
+    if (query?.type) {
+      conditions.push(eq(schema.assets.type, query.type));
+    }
+    if (query?.tag) {
+      conditions.push(eq(schema.assets.tag, query.tag));
+    }
+    if (query?.name) {
+      conditions.push(eq(schema.assets.name, query.name));
+    }
 
-      this.db.all(sql, params, (err, rows: any[]) => {
-        if (err) {
-          reject(err);
-        } else {
-          const assets: T[] = rows.map((row) => this.deserialize(row));
-          resolve(assets);
-        }
-      });
+    const assets = await (this.db as any).query.assets.findMany({
+      where: conditions.length > 0 ? and(...conditions) : undefined,
     });
+    return assets as T[];
   }
 
   async getAssetById(id: string): Promise<T | undefined> {
-    return new Promise((resolve, reject) => {
-      this.db.get(
-        `SELECT ${this.getColumns()} FROM ${this.tableName} WHERE id = ?`,
-        [id],
-        (err, row: any) => {
-          if (err) {
-            reject(err);
-          } else if (!row) {
-            resolve(undefined); // Return undefined if not found
-          } else {
-            resolve(this.deserialize(row));
-          }
-        }
-      );
+    const asset = await (this.db as any).query.assets.findFirst({
+      where: eq(schema.assets.id, id),
     });
+    return asset as T | undefined;
   }
 
   async updateAsset(id: string, asset: T): Promise<T> {
-    return new Promise((resolve, reject) => {
-      this.db.run(
-        `UPDATE ${this.tableName} SET ${this.getUpdateSet()} WHERE id = ?`,
-        this.serializeUpdate(asset),
-        function (err) {
-          if (err) {
-            reject(err);
-          } else if (this.changes === 0) {
-            reject(new Error(`Asset with id ${id} not found.`));
-          } else {
-            resolve({ ...asset, id });
-          }
-        }
-      );
-    });
+    const updatedAsset = {
+      ...asset,
+      updatedAt: new Date(),
+      // Handle asset-specific details for JSONB columns
+      soundDetails: asset.type === "sound" ? (asset as any).soundDetails : null,
+      spriteSheetDetails:
+        asset.type === "spritesheet" ? (asset as any).spriteSheetDetails : null,
+      tileSetDetails:
+        asset.type === "tileset" ? (asset as any).tileSetDetails : null,
+    };
+
+    const result = await (this.db as any)
+      .update(schema.assets)
+      .set(updatedAsset)
+      .where(eq(schema.assets.id, id))
+      .returning();
+    if (result.length === 0) {
+      throw new Error(`Asset with id ${id} not found.`);
+    }
+    return result[0] as T;
   }
 
   async deleteAsset(id: string): Promise<void> {
-    return new Promise((resolve, reject) => {
-      this.db.run(
-        `DELETE FROM ${this.tableName} WHERE id = ?`,
-        [id],
-        function (err) {
-          if (err) {
-            reject(err);
-          } else if (this.changes === 0) {
-            reject(new Error(`Asset with id ${id} not found.`));
-          } else {
-            resolve();
-          }
-        }
-      );
-    });
+    const result = await (this.db as any)
+      .delete(schema.assets)
+      .where(eq(schema.assets.id, id))
+      .returning();
+    if (result.length === 0) {
+      throw new Error(`Asset with id ${id} not found.`);
+    }
   }
 }
