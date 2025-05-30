@@ -1,13 +1,15 @@
 import { DataStore } from "../stores/DataStore";
 import { Project, ProjectSchema } from "../models/Project";
 import { Asset } from "../models/Asset";
-import { DatabaseDataStore } from "../stores/sqldb/DatabaseDataStore";
+import { Sound } from "../models/Sound";
+import { SpriteSheet } from "../models/SpriteSheet";
+import { TileSet } from "../models/TileSet";
 
 export class DatabaseService {
   private dataStore: DataStore;
 
-  constructor() {
-    this.dataStore = new DatabaseDataStore();
+  constructor(dataStore: DataStore) {
+    this.dataStore = dataStore;
   }
 
   createProject = async (project: Project): Promise<Project> => {
@@ -17,7 +19,7 @@ export class DatabaseService {
         validatedProject
       );
       return newProject;
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Error creating project: ${error.message}`);
     }
   };
@@ -33,7 +35,7 @@ export class DatabaseService {
   updateProject = async (id: string, project: Project): Promise<Project> => {
     try {
       return await this.dataStore.projects.updateProject(id, project);
-    } catch (error) {
+    } catch (error: any) {
       throw new Error(`Error updating project: ${error.message}`);
     }
   };
@@ -44,57 +46,121 @@ export class DatabaseService {
 
   createAsset = async (asset: Asset): Promise<Asset> => {
     try {
-      return await this.dataStore.assets.createAsset(asset);
-    } catch (error) {
+      return await this.dataStore.assets!.createAsset(asset);
+    } catch (error: any) {
       throw new Error(`Error creating asset: ${error.message}`);
     }
   };
 
   getAssets = async (query: any): Promise<Asset[]> => {
-    return await this.dataStore.assets.getAssets(query);
+    return await this.dataStore.assets!.getAssets(query);
   };
 
-  getAssetById = async (id: string): Promise<Asset> => {
-    return await this.dataStore.assets.getAssetById(id);
+  getAssetById = async (id: string): Promise<Asset | undefined> => {
+    return await this.dataStore.assets!.getAssetById(id);
   };
 
   updateAsset = async (id: string, asset: Asset): Promise<Asset> => {
     try {
-      return await this.dataStore.assets.updateAsset(id, asset);
-    } catch (error) {
+      return await this.dataStore.assets!.updateAsset(id, asset);
+    } catch (error: any) {
       throw new Error(`Error updating asset: ${error.message}`);
     }
   };
 
   deleteAsset = async (id: string): Promise<void> => {
-    await this.dataStore.assets.deleteAsset(id);
+    await this.dataStore.assets!.deleteAsset(id);
   };
 
-  createSound = async (sound: Asset): Promise<Asset> => {
+  createSound = async (sound: Sound): Promise<Sound> => {
     try {
-      return await this.dataStore.sounds.createSound(sound);
-    } catch (error) {
+      return await this.dataStore.assets!.sounds.createAsset(sound);
+    } catch (error: any) {
       throw new Error(`Error creating sound asset: ${error.message}`);
     }
   };
 
-  getSounds = async (query: any): Promise<Asset[]> => {
-    return await this.dataStore.sounds.getSounds(query);
+  getSounds = async (query: any): Promise<Sound[]> => {
+    return await this.dataStore.assets!.sounds.getAssets(query);
   };
 
-  getSoundById = async (id: string): Promise<Asset> => {
-    return await this.dataStore.sounds.getSoundById(id);
+  getSoundById = async (id: string): Promise<Sound | undefined> => {
+    return await this.dataStore.assets!.sounds.getAssetById(id);
   };
 
-  updateSound = async (id: string, sound: Asset): Promise<Asset> => {
+  updateSound = async (id: string, sound: Sound): Promise<Sound> => {
     try {
-      return await this.dataStore.sounds.updateSound(id, sound);
-    } catch (error) {
+      return await this.dataStore.assets!.sounds.updateAsset(id, sound);
+    } catch (error: any) {
       throw new Error(`Error updating sound asset: ${error.message}`);
     }
   };
 
   deleteSound = async (id: string): Promise<void> => {
-    await this.dataStore.sounds.deleteSound(id);
+    await this.dataStore.assets!.sounds.deleteAsset(id);
+  };
+
+  createSpriteSheet = async (
+    spritesheet: SpriteSheet
+  ): Promise<SpriteSheet> => {
+    try {
+      return await this.dataStore.assets!.spritesheets.createAsset(spritesheet);
+    } catch (error: any) {
+      throw new Error(`Error creating spritesheet asset: ${error.message}`);
+    }
+  };
+
+  getSpriteSheets = async (query: any): Promise<SpriteSheet[]> => {
+    return await this.dataStore.assets!.spritesheets.getAssets(query);
+  };
+
+  getSpriteSheetById = async (id: string): Promise<SpriteSheet | undefined> => {
+    return await this.dataStore.assets!.spritesheets.getAssetById(id);
+  };
+
+  updateSpriteSheet = async (
+    id: string,
+    spritesheet: SpriteSheet
+  ): Promise<SpriteSheet> => {
+    try {
+      return await this.dataStore.assets!.spritesheets.updateAsset(
+        id,
+        spritesheet
+      );
+    } catch (error: any) {
+      throw new Error(`Error updating spritesheet asset: ${error.message}`);
+    }
+  };
+
+  deleteSpriteSheet = async (id: string): Promise<void> => {
+    await this.dataStore.assets!.spritesheets.deleteAsset(id);
+  };
+
+  createTileSet = async (tileset: TileSet): Promise<TileSet> => {
+    try {
+      return await this.dataStore.assets!.tilesets.createAsset(tileset);
+    } catch (error: any) {
+      throw new Error(`Error creating tileset asset: ${error.message}`);
+    }
+  };
+
+  getTileSets = async (query: any): Promise<TileSet[]> => {
+    return await this.dataStore.assets!.tilesets.getAssets(query);
+  };
+
+  getTileSetById = async (id: string): Promise<TileSet | undefined> => {
+    return await this.dataStore.assets!.tilesets.getAssetById(id);
+  };
+
+  updateTileSet = async (id: string, tileset: TileSet): Promise<TileSet> => {
+    try {
+      return await this.dataStore.assets!.tilesets.updateAsset(id, tileset);
+    } catch (error: any) {
+      throw new Error(`Error updating tileset asset: ${error.message}`);
+    }
+  };
+
+  deleteTileSet = async (id: string): Promise<void> => {
+    await this.dataStore.assets!.tilesets.deleteAsset(id);
   };
 }
