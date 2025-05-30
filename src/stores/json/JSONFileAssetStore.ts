@@ -4,9 +4,9 @@ import * as fs from "fs/promises";
 import * as path from "path";
 import { v4 as uuidv4 } from "uuid";
 
-export class JSONFileAssetStore implements AssetStore {
+export class JSONFileAssetStore<T extends Asset> implements AssetStore<T> {
   private filePath: string;
-  private assets: Map<string, Asset> = new Map();
+  private assets: Map<string, T> = new Map();
   private dataStore: DataStore;
 
   constructor(
@@ -21,7 +21,7 @@ export class JSONFileAssetStore implements AssetStore {
   private async loadAssets(): Promise<void> {
     try {
       const data = await fs.readFile(this.filePath, "utf8");
-      const assetsArray: Asset[] = JSON.parse(data);
+      const assetsArray: T[] = JSON.parse(data);
       this.assets = new Map(
         assetsArray
           .filter((asset) => asset.id !== undefined)
@@ -50,29 +50,29 @@ export class JSONFileAssetStore implements AssetStore {
     }
   }
 
-  async createAsset(asset: Asset): Promise<Asset> {
+  async createAsset(asset: T): Promise<T> {
     asset.id = uuidv4();
     this.assets.set(asset.id, asset);
     await this.saveAssets();
     return asset;
   }
 
-  async getAssets(query: any): Promise<Asset[]> {
+  async getAssets(query: any): Promise<T[]> {
     // For simplicity, query is not fully implemented. Returns all assets.
     return Array.from(this.assets.values());
   }
 
-  async getAssetById(id: string): Promise<Asset> {
-    return this.assets.get(id) as Asset;
+  async getAssetById(id: string): Promise<T> {
+    return this.assets.get(id) as T;
   }
 
-  async updateAsset(id: string, asset: Asset): Promise<Asset> {
+  async updateAsset(id: string, asset: T): Promise<T> {
     if (!this.assets.has(id)) {
       throw new Error(`Asset with id ${id} not found.`);
     }
     this.assets.set(id, { ...this.assets.get(id), ...asset, id });
     await this.saveAssets();
-    return this.assets.get(id) as Asset;
+    return this.assets.get(id) as T;
   }
 
   async deleteAsset(id: string): Promise<void> {

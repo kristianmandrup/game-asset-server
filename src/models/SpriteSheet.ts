@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { AssetBaseSchema } from "./Asset";
 
-export const SpriteSheetSchema = z.object({
+export const SpriteSheetSchema = AssetBaseSchema.extend({
+  type: z.literal("spritesheet"),
   spritesheet: z.object({
     type: z.literal("grid").or(z.literal("scatter")),
     size: z.tuple([z.number(), z.number()]).optional(),

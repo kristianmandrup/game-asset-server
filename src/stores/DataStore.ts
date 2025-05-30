@@ -1,11 +1,9 @@
 import { Project } from "../models/Project";
 import { Asset } from "../models/Asset";
-import { Sound } from "../models/Sound";
 
 export interface DataStore {
   projects: ProjectStore;
-  assets: AssetStore;
-  sounds: SoundAssetStore; // Add this line
+  assets: AssetStore<Asset>;
 }
 
 export interface ProjectStore {
@@ -16,18 +14,10 @@ export interface ProjectStore {
   deleteProject(id: string): Promise<void>;
 }
 
-export interface AssetStore {
-  createAsset(asset: Asset): Promise<Asset>;
-  getAssets(query: any): Promise<Asset[]>;
-  getAssetById(id: string): Promise<Asset>;
-  updateAsset(id: string, asset: Asset): Promise<Asset>;
+export interface AssetStore<T extends Asset> {
+  createAsset(asset: T): Promise<T>;
+  getAssets(query?: Partial<T>): Promise<T[]>;
+  getAssetById(id: string): Promise<T | undefined>;
+  updateAsset(id: string, asset: T): Promise<T>;
   deleteAsset(id: string): Promise<void>;
-}
-
-export interface SoundAssetStore {
-  createSound(sound: Asset): Promise<Asset>;
-  getSounds(query?: Partial<Asset>): Promise<Asset[]>;
-  getSoundById(id: string): Promise<Asset>;
-  updateSound(id: string, sound: Asset): Promise<Asset>;
-  deleteSound(id: string): Promise<void>;
 }

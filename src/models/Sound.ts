@@ -1,12 +1,15 @@
 import { z } from "zod";
+import { AssetBaseSchema } from "./Asset";
 
-export const SoundSchema = z.object({
+export const SoundSchema = AssetBaseSchema.extend({
+  type: z.literal("sound"),
   name: z.string(),
   volume: z.number().optional(),
   duration: z.number().optional(),
 });
 
-export const CompositeAssetSchema = z.object({
+export const CompositeAssetSchema = AssetBaseSchema.extend({
+  type: z.literal("composite"),
   name: z.string(),
   tags: z.array(z.string()),
   components: z.array(

@@ -1,6 +1,8 @@
 import { z } from "zod";
+import { AssetBaseSchema } from "./Asset";
 
-export const TileSetSchema = z.object({
+export const TileSetSchema = AssetBaseSchema.extend({
+  type: z.literal("tileset"),
   tileset: z.object({
     type: z.literal("grid").or(z.literal("scatter")),
     size: z.tuple([z.number(), z.number()]).optional(),

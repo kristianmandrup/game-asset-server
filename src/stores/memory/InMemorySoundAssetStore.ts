@@ -1,30 +1,22 @@
 import { InMemoryAssetStore } from "./InMemoryAssetStore";
 import { InMemoryDataStore } from "./InMemoryDataStore";
 import { Asset } from "../../models/Asset";
-import { SoundSchema } from "../../models/Sound";
+import { Sound, SoundSchema } from "../../models/Sound";
 
-export class InMemorySoundAssetStore extends InMemoryAssetStore {
+export class InMemorySoundAssetStore extends InMemoryAssetStore<Sound> {
   constructor(dataStore: InMemoryDataStore) {
     super(dataStore);
   }
 
   /**
    * Creates a new Sound asset.
-   * @param asset The Sound asset to create.
+   * @param sound The Sound asset to create.
    * @returns A Promise that resolves to the created Sound asset.
    */
-  createSound = async (asset: Asset): Promise<Asset> => {
-    if (asset.type !== "sound") {
-      throw new Error("Asset type must be 'sound' for createSound.");
-    }
+  createSound = async (sound: Sound): Promise<Sound> => {
     try {
-      // Validate the sound-specific data
-      if (asset.sound) {
-        SoundSchema.parse(asset.sound);
-      } else {
-        throw new Error("Sound data is missing.");
-      }
-      return this.createAsset(asset);
+      SoundSchema.parse(sound); // Validate the sound asset
+      return this.createAsset(sound);
     } catch (error: any) {
       throw new Error(`Error creating sound asset: ${error.message}`);
     }
@@ -35,42 +27,34 @@ export class InMemorySoundAssetStore extends InMemoryAssetStore {
    * @param query An optional query object to filter Sound assets.
    * @returns A Promise that resolves to an array of Sound assets.
    */
-  getSounds = async (query?: Partial<Asset>): Promise<Asset[]> => {
-    const combinedQuery: Partial<Asset> = { ...query, type: "sound" };
-    return this.getAssets(combinedQuery);
+  getSounds = async (query?: Partial<Sound>): Promise<Sound[]> => {
+    const assets = await this.getAssets(query || {});
+    return assets.filter((asset): asset is Sound => asset.type === "sound");
   };
 
   /**
    * Retrieves a Sound asset by its ID.
    * @param id The ID of the Sound asset to retrieve.
-   * @returns A Promise that resolves to the Sound asset, or an empty object if not found.
+   * @returns A Promise that resolves to the Sound asset, or undefined if not found or not a sound.
    */
-  getSoundById = async (id: string): Promise<Asset> => {
+  getSoundById = async (id: string): Promise<Sound | undefined> => {
     const asset = await this.getAssetById(id);
-    if (asset.type === "sound") {
-      return asset;
+    if (asset && asset.type === "sound") {
+      return asset as Sound;
     }
-    return {} as Asset; // Return empty object if not a sound or not found
+    return undefined;
   };
 
   /**
    * Updates an existing Sound asset.
    * @param id The ID of the Sound asset to update.
-   * @param asset The updated Sound asset data.
+   * @param sound The updated Sound asset data.
    * @returns A Promise that resolves to the updated Sound asset.
    */
-  updateSound = async (id: string, asset: Asset): Promise<Asset> => {
-    if (asset.type !== "sound") {
-      throw new Error("Asset type must be 'sound' for updateSound.");
-    }
+  updateSound = async (id: string, sound: Sound): Promise<Sound> => {
     try {
-      // Validate the sound-specific data
-      if (asset.sound) {
-        SoundSchema.parse(asset.sound);
-      } else {
-        throw new Error("Sound data is missing.");
-      }
-      return this.updateAsset(id, asset);
+      SoundSchema.parse(sound); // Validate the sound asset
+      return this.updateAsset(id, sound);
     } catch (error: any) {
       throw new Error(`Error updating sound asset: ${error.message}`);
     }
@@ -84,7 +68,7 @@ export class InMemorySoundAssetStore extends InMemoryAssetStore {
   deleteSound = async (id: string): Promise<void> => {
     // First, verify it's a sound before deleting
     const assetToDelete = await this.getAssetById(id);
-    if (assetToDelete.type === "sound") {
+    if (assetToDelete && assetToDelete.type === "sound") {
       return this.deleteAsset(id);
     }
     // If it's not a sound, or not found, do nothing or throw an error
