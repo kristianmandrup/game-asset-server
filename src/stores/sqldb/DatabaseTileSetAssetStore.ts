@@ -1,10 +1,10 @@
 import { DatabaseAssetStore } from "./DatabaseAssetStore";
 import { Database } from "sqlite3";
-import { Sound } from "../../models/Sound";
+import { TileSet } from "../../models/TileSet";
 
-export class DatabaseSoundAssetStore extends DatabaseAssetStore<Sound> {
+export class DatabaseTileSetAssetStore extends DatabaseAssetStore<TileSet> {
   constructor(db: Database) {
-    super(db, "sounds");
+    super(db, "tilesets");
   }
 
   protected async createTable(): Promise<void> {
@@ -18,8 +18,9 @@ export class DatabaseSoundAssetStore extends DatabaseAssetStore<Sound> {
           name TEXT NOT NULL,
           asset_file TEXT NOT NULL,
           file_size INTEGER NOT NULL,
-          volume REAL,
-          duration REAL
+          tileset_data TEXT,
+          collision_box_data TEXT,
+          path_data TEXT
         )`,
         (err) => {
           if (err) {
@@ -32,7 +33,7 @@ export class DatabaseSoundAssetStore extends DatabaseAssetStore<Sound> {
     });
   }
 
-  protected serialize(asset: Sound): any[] {
+  protected serialize(asset: TileSet): any[] {
     return [
       asset.id,
       asset.project_id,
@@ -41,12 +42,13 @@ export class DatabaseSoundAssetStore extends DatabaseAssetStore<Sound> {
       asset.name,
       asset.asset_file,
       asset.file_size,
-      asset.volume || null,
-      asset.duration || null,
+      JSON.stringify(asset.tileset),
+      asset.collision_box ? JSON.stringify(asset.collision_box) : null,
+      asset.path ? JSON.stringify(asset.path) : null,
     ];
   }
 
-  protected deserialize(row: any): Sound {
+  protected deserialize(row: any): TileSet {
     return {
       id: row.id,
       project_id: row.project_id,
@@ -55,24 +57,27 @@ export class DatabaseSoundAssetStore extends DatabaseAssetStore<Sound> {
       name: row.name,
       asset_file: row.asset_file,
       file_size: row.file_size,
-      volume: row.volume,
-      duration: row.duration,
-    } as Sound;
+      tileset: JSON.parse(row.tileset_data),
+      collision_box: row.collision_box_data
+        ? JSON.parse(row.collision_box_data)
+        : undefined,
+      path: row.path_data ? JSON.parse(row.path_data) : undefined,
+    } as TileSet;
   }
 
   protected getColumns(): string {
-    return "id, project_id, type, tag, name, asset_file, file_size, volume, duration";
+    return "id, project_id, type, tag, name, asset_file, file_size, tileset_data, collision_box_data, path_data";
   }
 
   protected getPlaceholders(): string {
-    return "?, ?, ?, ?, ?, ?, ?, ?, ?";
+    return "?, ?, ?, ?, ?, ?, ?, ?, ?, ?";
   }
 
   protected getUpdateSet(): string {
-    return "project_id = ?, type = ?, tag = ?, name = ?, asset_file = ?, file_size = ?, volume = ?, duration = ?";
+    return "project_id = ?, type = ?, tag = ?, name = ?, asset_file = ?, file_size = ?, tileset_data = ?, collision_box_data = ?, path_data = ?";
   }
 
-  protected serializeUpdate(asset: Sound): any[] {
+  protected serializeUpdate(asset: TileSet): any[] {
     return [
       asset.project_id,
       asset.type,
@@ -80,8 +85,9 @@ export class DatabaseSoundAssetStore extends DatabaseAssetStore<Sound> {
       asset.name,
       asset.asset_file,
       asset.file_size,
-      asset.volume || null,
-      asset.duration || null,
+      JSON.stringify(asset.tileset),
+      asset.collision_box ? JSON.stringify(asset.collision_box) : null,
+      asset.path ? JSON.stringify(asset.path) : null,
       asset.id,
     ];
   }
