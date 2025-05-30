@@ -69,4 +69,32 @@ export class DatabaseService {
   deleteAsset = async (id: string): Promise<void> => {
     await this.dataStore.assets.deleteAsset(id);
   };
+
+  createSound = async (sound: Asset): Promise<Asset> => {
+    try {
+      return await this.dataStore.sounds.createSound(sound);
+    } catch (error) {
+      throw new Error(`Error creating sound asset: ${error.message}`);
+    }
+  };
+
+  getSounds = async (query: any): Promise<Asset[]> => {
+    return await this.dataStore.sounds.getSounds(query);
+  };
+
+  getSoundById = async (id: string): Promise<Asset> => {
+    return await this.dataStore.sounds.getSoundById(id);
+  };
+
+  updateSound = async (id: string, sound: Asset): Promise<Asset> => {
+    try {
+      return await this.dataStore.sounds.updateSound(id, sound);
+    } catch (error) {
+      throw new Error(`Error updating sound asset: ${error.message}`);
+    }
+  };
+
+  deleteSound = async (id: string): Promise<void> => {
+    await this.dataStore.sounds.deleteSound(id);
+  };
 }

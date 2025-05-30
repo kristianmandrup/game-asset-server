@@ -15,6 +15,7 @@ export const AssetSchema = z.object({
   tag: z.string(),
   name: z.string(),
   asset_file: z.string(), // New required field for binary asset file path
+  file_size: z.number(),
   tileset: TileSetSchema.optional(),
   spritesheet: SpriteSheetSchema.optional(),
   sound: SoundSchema.optional(),
