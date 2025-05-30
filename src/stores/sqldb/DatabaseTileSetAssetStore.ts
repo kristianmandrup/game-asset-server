@@ -1,10 +1,11 @@
 import { DatabaseAssetStore } from "./DatabaseAssetStore";
 import { Database } from "sqlite3";
 import { TileSet } from "../../models/TileSet";
+import { DataStore } from "../DataStore";
 
 export class DatabaseTileSetAssetStore extends DatabaseAssetStore<TileSet> {
-  constructor(db: Database) {
-    super(db, "tilesets");
+  constructor(db: Database, dataStore: DataStore) {
+    super(db, dataStore, "tilesets");
   }
 
   protected async createTable(): Promise<void> {

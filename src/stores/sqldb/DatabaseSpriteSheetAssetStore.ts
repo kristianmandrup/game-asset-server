@@ -1,10 +1,11 @@
 import { DatabaseAssetStore } from "./DatabaseAssetStore";
 import { Database } from "sqlite3";
 import { SpriteSheet } from "../../models/SpriteSheet";
+import { DataStore } from "../DataStore";
 
 export class DatabaseSpriteSheetAssetStore extends DatabaseAssetStore<SpriteSheet> {
-  constructor(db: Database) {
-    super(db, "spritesheets");
+  constructor(db: Database, dataStore: DataStore) {
+    super(db, dataStore, "spritesheets");
   }
 
   protected async createTable(): Promise<void> {

@@ -13,7 +13,7 @@ export class InMemoryAssetStore<T extends Asset> implements AssetStore<T> {
     this.dataStore = dataStore;
   }
 
-  createAsset = async (asset: T): Promise<T> => {
+  async createAsset(asset: T): Promise<T> {
     try {
       // Validate the asset data against the appropriate schema (e.g. SpriteSheetSchema, TileSetSchema, etc.)
       // We need to use the specific schema for T, but AssetSchema is a union.
@@ -26,9 +26,9 @@ export class InMemoryAssetStore<T extends Asset> implements AssetStore<T> {
     } catch (error: any) {
       throw new Error(`Error creating asset: ${error.message}`);
     }
-  };
+  }
 
-  getAssets = async (query: Partial<T>): Promise<T[]> => {
+  async getAssets(query: Partial<T>): Promise<T[]> {
     // Filter the assets based on the provided query object
     return this.assets.filter((asset) => {
       for (const key in query) {
@@ -48,13 +48,13 @@ export class InMemoryAssetStore<T extends Asset> implements AssetStore<T> {
       }
       return true;
     });
-  };
+  }
 
-  getAssetById = async (id: string): Promise<T | undefined> => {
+  async getAssetById(id: string): Promise<T | undefined> {
     return this.assets.find((a) => a.id === id);
-  };
+  }
 
-  updateAsset = async (id: string, asset: T): Promise<T> => {
+  async updateAsset(id: string, asset: T): Promise<T> {
     try {
       const index = this.assets.findIndex((a) => a.id === id);
       if (index !== -1) {
@@ -66,9 +66,9 @@ export class InMemoryAssetStore<T extends Asset> implements AssetStore<T> {
     } catch (error: any) {
       throw new Error(`Error updating asset: ${error.message}`);
     }
-  };
+  }
 
-  deleteAsset = async (id: string): Promise<void> => {
+  async deleteAsset(id: string): Promise<void> {
     this.assets = this.assets.filter((a) => a.id !== id);
-  };
+  }
 }

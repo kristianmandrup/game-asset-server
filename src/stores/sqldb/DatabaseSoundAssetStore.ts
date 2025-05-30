@@ -1,10 +1,11 @@
 import { DatabaseAssetStore } from "./DatabaseAssetStore";
 import { Database } from "sqlite3";
 import { Sound } from "../../models/Sound";
+import { DataStore } from "../DataStore";
 
 export class DatabaseSoundAssetStore extends DatabaseAssetStore<Sound> {
-  constructor(db: Database) {
-    super(db, "sounds");
+  constructor(db: Database, dataStore: DataStore) {
+    super(db, dataStore, "sounds");
   }
 
   protected async createTable(): Promise<void> {

@@ -1,19 +1,25 @@
 import {
   DataStore,
   ProjectStore,
-  AssetStore,
-  SoundAssetStore,
+  UserStore, // Import UserStore
+  ApiKeyStore, // Import ApiKeyStore
 } from "../DataStore";
 import { DatabaseProjectStore } from "./DatabaseProjectStore";
-import { DatabaseAssetStore } from "./DatabaseAssetStore";
 import { DatabaseSoundAssetStore } from "./DatabaseSoundAssetStore";
+import { DatabaseUserStore } from "./DatabaseUserStore"; // Import DatabaseUserStore
+import { DatabaseApiKeyStore } from "./DatabaseApiKeyStore"; // Import DatabaseApiKeyStore
 import * as sqlite3 from "sqlite3";
 import * as path from "path";
+import { DatabaseTileSetAssetStore } from "./DatabaseTileSetAssetStore";
+import { DatabaseSpriteSheetAssetStore } from "./DatabaseSpriteSheetAssetStore";
 
 export class DatabaseDataStore implements DataStore {
   projects: ProjectStore;
-  assets: AssetStore;
-  sounds: SoundAssetStore; // Add this line
+  spritesheets: DatabaseSpriteSheetAssetStore;
+  tilesets: DatabaseTileSetAssetStore;
+  sounds: DatabaseSoundAssetStore;
+  users: UserStore; // Add users store
+  apiKeys: ApiKeyStore; // Add apiKeys store
   private db: sqlite3.Database;
 
   constructor(
@@ -28,8 +34,11 @@ export class DatabaseDataStore implements DataStore {
     });
 
     this.projects = new DatabaseProjectStore(this.db, this);
-    this.assets = new DatabaseAssetStore(this.db, this);
-    this.sounds = new DatabaseSoundAssetStore(this.db, this); // Add this line
+    this.spritesheets = new DatabaseSpriteSheetAssetStore(this.db, this);
+    this.tilesets = new DatabaseTileSetAssetStore(this.db, this);
+    this.sounds = new DatabaseSoundAssetStore(this.db, this);
+    this.users = new DatabaseUserStore(this.db, this); // Instantiate DatabaseUserStore
+    this.apiKeys = new DatabaseApiKeyStore(this.db, this); // Instantiate DatabaseApiKeyStore
   }
 
   close(): Promise<void> {

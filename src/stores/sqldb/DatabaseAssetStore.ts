@@ -1,16 +1,18 @@
 import { Asset } from "../../models/Asset";
-import { AssetStore } from "../DataStore";
+import { AssetStore, DataStore } from "../DataStore";
 import * as sqlite3 from "sqlite3";
 import { v4 as uuidv4 } from "uuid";
 
 export abstract class DatabaseAssetStore<T extends Asset>
   implements AssetStore<T>
 {
+  private dataStore: DataStore;
   protected db: sqlite3.Database;
   protected tableName: string;
 
-  constructor(db: sqlite3.Database, tableName: string) {
+  constructor(db: sqlite3.Database, dataStore: DataStore, tableName: string) {
     this.db = db;
+    this.dataStore = dataStore;
     this.tableName = tableName;
     this.createTable(); // Call createTable in the constructor
   }

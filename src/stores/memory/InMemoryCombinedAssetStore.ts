@@ -1,77 +1,91 @@
-import { AssetStore } from "../DataStore";
+import { AssetStore, CombinedAssetStore } from "../DataStore";
 import { InMemoryAssetStore } from "./InMemoryAssetStore";
 import { InMemorySpriteSheetAssetStore } from "./InMemorySpriteSheetAssetStore";
 import { InMemoryTileSetAssetStore } from "./InMemoryTileSetAssetStore";
+import { InMemorySoundAssetStore } from "./InMemorySoundAssetStore"; // Import InMemorySoundAssetStore
 import { Asset } from "../../models/Asset";
 import { InMemoryDataStore } from "./InMemoryDataStore"; // Import InMemoryDataStore
 
-export class InMemoryCombinedAssetStore implements AssetStore {
-  private inMemoryAssetStore: InMemoryAssetStore;
-  private inMemorySpriteSheetAssetStore: InMemorySpriteSheetAssetStore;
-  private inMemoryTileSetAssetStore: InMemoryTileSetAssetStore;
+export class InMemoryCombinedAssetStore implements CombinedAssetStore {
+  spritesheets: InMemorySpriteSheetAssetStore;
+  tilesets: InMemoryTileSetAssetStore;
+  sounds: InMemorySoundAssetStore;
+  assets: InMemoryAssetStore<Asset>;
+
+  protected assetStoreMap: Map<string, any>;
 
   constructor(dataStore: InMemoryDataStore) {
-    this.inMemoryAssetStore = new InMemoryAssetStore(dataStore);
-    this.inMemorySpriteSheetAssetStore = new InMemorySpriteSheetAssetStore(
-      dataStore
-    );
-    this.inMemoryTileSetAssetStore = new InMemoryTileSetAssetStore(dataStore);
+    this.assets = new InMemoryAssetStore<Asset>(dataStore);
+    this.spritesheets = new InMemorySpriteSheetAssetStore(dataStore);
+    this.tilesets = new InMemoryTileSetAssetStore(dataStore);
+    this.sounds = new InMemorySoundAssetStore(dataStore); // Initialize InMemorySoundAssetStore
+
+    this.assetStoreMap = new Map<string, any>();
+    this.assetStoreMap.set("spritesheet", this.spritesheets);
+    this.assetStoreMap.set("tileset", this.tilesets);
+    this.assetStoreMap.set("sound", this.sounds);
   }
 
   async createAsset(asset: Asset): Promise<Asset> {
-    if (asset.type === "spritesheet") {
-      return this.inMemorySpriteSheetAssetStore.createSpriteSheet(asset);
-    } else if (asset.type === "tileset") {
-      return this.inMemoryTileSetAssetStore.createTileSet(asset);
-    }
-    return this.inMemoryAssetStore.createAsset(asset);
+    const specializedStore = this.assetStoreMap.get(asset.type);
+    return (
+      (specializedStore && specializedStore.createAsset(asset)) ||
+      this.assets.createAsset(asset)
+    );
   }
 
   async getAssets(query: Partial<Asset>): Promise<Asset[]> {
-    if (query.type === "spritesheet") {
-      return this.inMemorySpriteSheetAssetStore.getSpriteSheets(query);
-    } else if (query.type === "tileset") {
-      return this.inMemoryTileSetAssetStore.getTileSets(query);
+    if (query.type) {
+      // Check if query.type is defined
+      const specializedStore = this.assetStoreMap.get(query.type);
+      return (
+        (specializedStore && specializedStore.getAssets(query)) ||
+        this.assets.getAssets(query)
+      );
     }
-    return this.inMemoryAssetStore.getAssets(query);
+    return this.assets.getAssets(query);
   }
 
-  async getAssetById(id: string): Promise<Asset> {
-    // Try to get from specialized stores first, then generic
-    let asset = await this.inMemorySpriteSheetAssetStore.getSpriteSheetById(id);
-    if (Object.keys(asset).length > 0) return asset; // Check if asset is not empty object
-
-    asset = await this.inMemoryTileSetAssetStore.getTileSetById(id);
-    if (Object.keys(asset).length > 0) return asset;
-
-    return this.inMemoryAssetStore.getAssetById(id);
+  async getAssetById(id: string, type?: string): Promise<Asset | undefined> {
+    if (type) {
+      // Check if query.type is defined
+      const specializedStore = this.assetStoreMap.get(type);
+      return (
+        (specializedStore && specializedStore.getAssetById(id)) ||
+        this.assets.getAssetById(id)
+      );
+    }
+    // Iterate through specialized stores to find the asset
+    for (const store of this.assetStoreMap.values()) {
+      // Attempt to call specific getById methods based on store type
+      return await store.getAssetById(id);
+    }
+    return this.assets.getAssetById(id);
   }
 
   async updateAsset(id: string, asset: Asset): Promise<Asset> {
-    if (asset.type === "spritesheet") {
-      return this.inMemorySpriteSheetAssetStore.updateSpriteSheet(id, asset);
-    } else if (asset.type === "tileset") {
-      return this.inMemoryTileSetAssetStore.updateTileSet(id, asset);
-    }
-    return this.inMemoryAssetStore.updateAsset(id, asset);
+    const specializedStore = this.assetStoreMap.get(asset.type);
+    return (
+      (specializedStore && specializedStore.updateAsset(id, asset)) ||
+      this.assets.updateAsset(id, asset)
+    );
   }
 
-  async deleteAsset(id: string): Promise<void> {
-    // Try to delete from specialized stores first, then generic
-    try {
-      await this.inMemorySpriteSheetAssetStore.deleteSpriteSheet(id);
-      return;
-    } catch (e) {
-      // Ignore if not found in spritesheet store
+  async deleteAsset(id: string, type?: string): Promise<void> {
+    if (type) {
+      // Check if query.type is defined
+      const specializedStore = this.assetStoreMap.get(type);
+      return (
+        (specializedStore && specializedStore.deleteAsset(id)) ||
+        this.assets.deleteAsset(id)
+      );
     }
 
-    try {
-      await this.inMemoryTileSetAssetStore.deleteTileSet(id);
-      return;
-    } catch (e) {
-      // Ignore if not found in tileset store
+    // Iterate through specialized stores to delete the asset
+    for (const store of this.assetStoreMap.values()) {
+      // Attempt to call specific delete methods based on store type
+      return await store.deleteAsset(id);
     }
-
-    return this.inMemoryAssetStore.deleteAsset(id);
+    return this.assets.deleteAsset(id);
   }
 }
